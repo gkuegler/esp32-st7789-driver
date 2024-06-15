@@ -99,21 +99,22 @@ void spi_release_task(void *pvParameters) {
 
   for (;;) {
     // Wait to be notified of an interrupt.
-    xTaskNotifyWait(pdFALSE,          // Don't clear bits on entry.
-                    ULONG_MAX,        // Clear all bits on exit.
-                    &ulNotifiedValue, // Stores the notified value.
-                    xMaxBlockTime);
+    if (xTaskNotifyWait(pdFALSE,          // Don't clear bits on entry.
+                        ULONG_MAX,        // Clear all bits on exit.
+                        &ulNotifiedValue, // Stores the notified value.
+                        xMaxBlockTime) == pdTRUE) {
 
-    if (DISP_SPI_RELEASE_BUS_WHEN_COMPLETE & ulNotifiedValue) {
-      spi_device_release_bus(g_spi);
-      ESP_LOGD(TAG, "SPI bus released!");
-    }
-    if (DISP_SPI_SIGNAL_FLUSH & ulNotifiedValue) {
-      if (g_flush_cb) {
-        ESP_LOGD(TAG, "DISP Ready!");
-        g_flush_cb();
-      } else {
-        ESP_LOGD("spi_release_task", "flush finished callback ptr is NULL");
+      if (DISP_SPI_RELEASE_BUS_WHEN_COMPLETE & ulNotifiedValue) {
+        spi_device_release_bus(g_spi);
+        ESP_LOGD(TAG, "SPI bus released!");
+      }
+      if (DISP_SPI_SIGNAL_FLUSH & ulNotifiedValue) {
+        if (g_flush_cb) {
+          ESP_LOGD(TAG, "DISP Ready!");
+          g_flush_cb();
+        } else {
+          ESP_LOGD("spi_release_task", "flush finished callback ptr is NULL");
+        }
       }
     }
   }
