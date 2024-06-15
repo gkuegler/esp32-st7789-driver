@@ -19,7 +19,7 @@
 
 #include <string.h>
 
-#define TAG "sst7789 spi"
+static const char *TAG = "sst7789 spi"
 
 /*
  * Notes About DMA spi_transaction_t Structure Pooling.
@@ -78,7 +78,7 @@
  * small */
 #define SPI_FLUSH_HANDLER_STACK_SIZE configMINIMAL_STACK_SIZE * 3
 
-static spi_device_handle_t g_spi;
+    static spi_device_handle_t g_spi;
 static QueueHandle_t g_transaction_pool = NULL;
 static size_t g_max_transaction_sz = SPI_MAX_TRANSACTION_SIZE;
 

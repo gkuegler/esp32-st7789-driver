@@ -22,7 +22,7 @@ Use 'st7789_spi_register_flush_cb' to register a flush complete callback.
 
 #include "lvgl.h"
 
-#define TAG "[main]"
+static const char* TAG =  "[main]"
 
 // Match the requested SPI transfer size with the desired buffer size.
 // This sets how much of the screen can be redrawn at one time.
