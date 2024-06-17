@@ -6,9 +6,9 @@
 #include "disp_spi.h"
 #include "helper.h"
 
-static const char *TAG = "st7789"
+static const char *TAG = "st7789";
 
-    typedef struct {
+typedef struct {
   uint16_t col_start;
   uint16_t col_end;
   uint16_t row_start;

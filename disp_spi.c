@@ -19,7 +19,7 @@
 
 #include <string.h>
 
-static const char *TAG = "sst7789 spi"
+static const char *TAG = "sst7789 spi";
 
 /*
  * Notes About DMA spi_transaction_t Structure Pooling.
