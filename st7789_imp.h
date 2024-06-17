@@ -99,10 +99,10 @@ extern "C" {
 
 /* Represents an area of the screen to be drawn. */
 typedef struct {
+  int32_t x0;
+  int32_t y0;
   int32_t x1;
   int32_t y1;
-  int32_t x2;
-  int32_t y2;
 } st7789_area_t;
 
 void st7789_disp_init();
@@ -110,12 +110,15 @@ void st7789_turn_on_backlight();
 
 /* This must be called before writing color data to the screen.*/
 void st7789_set_orientation(uint8_t);
+void st7789_set_address(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2);
 /* Send a command byte.*/
 void st7789_send_cmd_byte(const uint8_t cmd);
 /* Send multiple commands in sequence with no delay.*/
 void st7789_send_cmd(const uint8_t *cmd, const size_t length);
-void st7789_send_data(const uint8_t *data, const size_t length);
-void st7789_flush(const st7789_area_t *area, const uint8_t *color_map);
+void st7789_send_data(const uint8_t *buf, const size_t length);
+void st7789_send_color(const uint8_t *buf, const size_t length);
+void st7789_flush(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1,
+                  const uint8_t *color_map);
 
 #ifdef __cplusplus
 } /* extern "C" */

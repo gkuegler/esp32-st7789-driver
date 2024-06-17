@@ -1,4 +1,4 @@
-#include "st7789.h"
+#include "st7789_imp.h"
 
 #include "driver/gpio.h"
 #include "esp_log.h"
@@ -71,17 +71,22 @@ void st7789_send_cmd(const uint8_t *cmd, const size_t length) {
   disp_spi_transaction(cmd, length, DISP_SPI_SEND_SYNCHRONOUS);
 }
 
-void st7789_send_data(const uint8_t *data, const size_t length) {
+void st7789_send_data(const uint8_t *buf, const size_t length) {
   disp_wait_for_pending_transactions();
   gpio_set_level(CONFIG_ST7789_DC_PIN, 1);
-  disp_spi_transaction(data, length, DISP_SPI_SEND_SYNCHRONOUS);
+  disp_spi_transaction(buf, length, DISP_SPI_SEND_SYNCHRONOUS);
 }
 
-// static void st7789_send_color(void *data, size_t length) {
-void st7789_send_color(const uint8_t *data, const size_t length) {
+void st7789_send_color(const uint8_t *buf, const size_t length) {
   disp_wait_for_pending_transactions();
+
+  /* Set the st7789 SPI interface to right data received directly to color
+  memory. I do it here (eliminating bugs) because there is rarely a time
+  chunks of color data are being sent to the st7789 without first setting the
+  memory addresses I write the color data to.*/
+  st7789_send_cmd_byte(ST7789_RAMWR);
   gpio_set_level(CONFIG_ST7789_DC_PIN, 1);
-  disp_spi_transaction(data, length,
+  disp_spi_transaction(buf, length,
                        DISP_SPI_SEND_QUEUED | DISP_SPI_SIGNAL_FLUSH);
 }
 
@@ -92,21 +97,21 @@ void st7789_set_orientation(uint8_t orientation) {
 
   // TODO: optimize this?
   const uint16_t bottom_index = ST7789_MEMORY_HEIGHT_PX -
-                                CONFIG_DISPLAY_ROW_START_PX -
-                                CONFIG_DISPLAY_HEIGHT_PX;
+                                CONFIG_DISP_HARD_ROW_START_PX -
+                                CONFIG_DISP_HARD_HEIGHT_PX;
   const uint16_t right_index = ST7789_MEMORY_WIDTH_PX -
-                               CONFIG_DISPLAY_COL_START_PX -
-                               CONFIG_DISPLAY_WIDTH_PX;
+                               CONFIG_DISP_HARD_COL_START_PX -
+                               CONFIG_DISP_HARD_WIDTH_PX;
 
   switch (orientation) {
   case 0:
     madctl |= MADCTL_TOP_TO_BOTTOM | MADCTL_LEFT_TO_RIGHT | MADCTL_NORMAL_MODE;
-    g_display_window.col_start = CONFIG_DISPLAY_COL_START_PX;
+    g_display_window.col_start = CONFIG_DISP_HARD_COL_START_PX;
     g_display_window.col_end =
-        CONFIG_DISPLAY_COL_START_PX + CONFIG_DISPLAY_WIDTH_PX - 1;
-    g_display_window.row_start = CONFIG_DISPLAY_ROW_START_PX;
+        CONFIG_DISP_HARD_COL_START_PX + CONFIG_DISP_HARD_WIDTH_PX - 1;
+    g_display_window.row_start = CONFIG_DISP_HARD_ROW_START_PX;
     g_display_window.row_end =
-        CONFIG_DISPLAY_ROW_START_PX + CONFIG_DISPLAY_HEIGHT_PX - 1;
+        CONFIG_DISP_HARD_ROW_START_PX + CONFIG_DISP_HARD_HEIGHT_PX - 1;
     break;
   case 1:
     madctl |= MADCTL_BOTTOM_TO_TOP | MADCTL_LEFT_TO_RIGHT | MADCTL_REVERSE_MODE;
@@ -116,25 +121,25 @@ void st7789_set_orientation(uint8_t orientation) {
     // window using only the supplied top and left padding values. Column start
     // is now at the hardware bottom.
     g_display_window.col_start = bottom_index;
-    g_display_window.col_end = bottom_index + CONFIG_DISPLAY_HEIGHT_PX - 1;
-    g_display_window.row_start = CONFIG_DISPLAY_COL_START_PX;
+    g_display_window.col_end = bottom_index + CONFIG_DISP_HARD_HEIGHT_PX - 1;
+    g_display_window.row_start = CONFIG_DISP_HARD_COL_START_PX;
     g_display_window.row_end =
-        CONFIG_DISPLAY_COL_START_PX + CONFIG_DISPLAY_WIDTH_PX - 1;
+        CONFIG_DISP_HARD_COL_START_PX + CONFIG_DISP_HARD_WIDTH_PX - 1;
     break;
   case 2:
     madctl |= MADCTL_BOTTOM_TO_TOP | MADCTL_RIGHT_TO_LEFT | MADCTL_NORMAL_MODE;
     g_display_window.col_start = right_index;
-    g_display_window.col_end = right_index + CONFIG_DISPLAY_WIDTH_PX - 1;
+    g_display_window.col_end = right_index + CONFIG_DISP_HARD_WIDTH_PX - 1;
     g_display_window.row_start = bottom_index;
-    g_display_window.row_end = bottom_index + CONFIG_DISPLAY_HEIGHT_PX - 1;
+    g_display_window.row_end = bottom_index + CONFIG_DISP_HARD_HEIGHT_PX - 1;
     break;
   case 3:
     madctl |= MADCTL_TOP_TO_BOTTOM | MADCTL_RIGHT_TO_LEFT | MADCTL_REVERSE_MODE;
-    g_display_window.col_start = CONFIG_DISPLAY_ROW_START_PX;
+    g_display_window.col_start = CONFIG_DISP_HARD_ROW_START_PX;
     g_display_window.col_end =
-        CONFIG_DISPLAY_ROW_START_PX + CONFIG_DISPLAY_WIDTH_PX - 1;
+        CONFIG_DISP_HARD_ROW_START_PX + CONFIG_DISP_HARD_WIDTH_PX - 1;
     g_display_window.row_start = right_index;
-    g_display_window.row_end = right_index + CONFIG_DISPLAY_HEIGHT_PX - 1;
+    g_display_window.row_end = right_index + CONFIG_DISP_HARD_HEIGHT_PX - 1;
     break;
   default:
     ESP_LOGW(
@@ -148,17 +153,18 @@ void st7789_set_orientation(uint8_t orientation) {
   st7789_send_data((void *)&madctl, 1);
 }
 
-uint16_t swap_byte_order(uint16_t n) { return (n >> 8) | (n << 8); }
+static uint16_t swap_byte_order(uint16_t n) { return (n >> 8) | (n << 8); }
 
-void st7789_set_address(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2) {
+void st7789_set_address(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1) {
   // note: high byte and low byte get sent seperately in big endian
+  // Data can be static here because 'st7789_send_data' is synchronous.
   static uint16_t col_bounds[2];
   static uint16_t row_bounds[2];
 
-  col_bounds[0] = swap_byte_order(g_display_window.col_start + x1);
-  col_bounds[1] = swap_byte_order(g_display_window.col_start + x2);
-  row_bounds[0] = swap_byte_order(g_display_window.row_start + y1);
-  row_bounds[1] = swap_byte_order(g_display_window.row_start + y2);
+  col_bounds[0] = swap_byte_order(g_display_window.col_start + x0);
+  col_bounds[1] = swap_byte_order(g_display_window.col_start + x1);
+  row_bounds[0] = swap_byte_order(g_display_window.row_start + y0);
+  row_bounds[1] = swap_byte_order(g_display_window.row_start + y1);
 
   st7789_send_cmd_byte(ST7789_CASET);
   st7789_send_data((void *)&col_bounds, 4);
@@ -225,15 +231,11 @@ void st7789_disp_init() {
   ESP_LOGD(TAG, "Initialized.");
 }
 
-void st7789_flush(const st7789_area_t *area, const uint8_t *color_map) {
-  // set col and row modes
-  st7789_set_address(area->x1, area->y1, area->x2, area->y2);
-
-  const size_t length =
-      (area->x2 - area->x1 + 1) * (area->y2 - area->y1 + 1) * 2;
-
-  st7789_send_cmd_byte(ST7789_RAMWR);
-  st7789_send_color(color_map, length);
+void st7789_flush(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1,
+                  const uint8_t *color_map) {
+  const size_t size = (x1 - x0 + 1) * (y1 - y0 + 1) * 2;
+  st7789_set_address(x0, y0, x1, y1);
+  st7789_send_color(color_map, size);
 }
 
 void st7789_turn_on_backlight() {

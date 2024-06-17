@@ -25,7 +25,7 @@
 /*** SPI TRANSACTION PARAMETERS ***/
 
 // LVGL (when double buffered) can only have 2 in flight dma transfers.
-#define CONFIG_ST7789_SPI_TRANSACTION_POOL_SIZE 2
+#define CONFIG_ST7789_SPI_TRANSACTION_POOL_SIZE 8
 // Minimum number of available transactions from the pool before a send is
 // allowed.
 #define CONFIG_ST7789_SPI_TRANSACTION_POOL_RESERVE 1
@@ -47,14 +47,16 @@
 
 /*** DISPLAY PARAMETERS ***/
 
-// Mapping for the Adafruit 1.14" 240x135 color TFT
-#define CONFIG_DISPLAY_WIDTH_PX 135
-#define CONFIG_DISPLAY_HEIGHT_PX 240
+// These 'CONFIG_DISP_HARD...' values are always taken with screen respect
+// orientation 0.
 
+// Mapping for the Adafruit 1.14" 240x135 color TFT.
+#define CONFIG_DISP_HARD_WIDTH_PX 135
+#define CONFIG_DISP_HARD_HEIGHT_PX 240
 // Define where the top left pixel of the display is located in the st7789
 // memory.
-#define CONFIG_DISPLAY_COL_START_PX 52
-#define CONFIG_DISPLAY_ROW_START_PX 40
+#define CONFIG_DISP_HARD_COL_START_PX 52
+#define CONFIG_DISP_HARD_ROW_START_PX 40
 
 #define CONFIG_ST7789_MISO_PIN 37
 #define CONFIG_ST7789_MOSI_PIN 35
@@ -65,6 +67,16 @@
 #define CONFIG_ST7789_RESET_PIN 40
 #define CONFIG_ST7789_POWER_PIN 21
 #define CONFIG_ST7789_BACKLIGHT_PIN 45
+
+#define CONFIG_ST7789_ORIENTATION 1
+
+#if CONFIG_ST7789_ORIENTATION == 0 || CONFIG_ST7789_ORIENTATION == 2
+#define DISPLAY_WIDTH CONFIG_DISP_HARD_WIDTH_PX
+#define DISPLAY_HEIGHT CONFIG_DISP_HARD_HEIGHT_PX
+#elif CONFIG_ST7789_ORIENTATION == 1 || CONFIG_ST7789_ORIENTATION == 3
+#define DISPLAY_WIDTH CONFIG_DISP_HARD_HEIGHT_PX
+#define DISPLAY_HEIGHT CONFIG_DISP_HARD_WIDTH_PX
+#endif
 
 /* Uncomment to use software reset instead of gpio pin. */
 // #define CONFIG_ST7789_SOFT_RST
