@@ -178,9 +178,9 @@ void st7789_reset() {
   ESP_LOGD(TAG, "Resetting ST7789.");
 #ifndef CONFIG_ST7789_SOFT_RST
   gpio_set_level((gpio_num_t)CONFIG_ST7789_RESET_PIN, 0);
-  task_delay_ms(100);
+  vTaskDelay(pdMS_TO_TICKS(100));
   gpio_set_level((gpio_num_t)CONFIG_ST7789_RESET_PIN, 1);
-  task_delay_ms(250);
+  vTaskDelay(pdMS_TO_TICKS(250));
 #else
   delay_ms(100);
   st7789_send_cmd_byte(ST7789_SWRESET);
@@ -202,7 +202,7 @@ void st7789_disp_init() {
 
   // Avoid problems with relying on RTC GPIO pullups.
   gpio_set_level((gpio_num_t)CONFIG_ST7789_POWER_PIN, 1);
-  task_delay_ms(300);
+  vTaskDelay(pdMS_TO_TICKS(300));
 
 #ifndef CONFIG_ST7789_SOFT_RST
   gpio_reset_pin((gpio_num_t)CONFIG_ST7789_RESET_PIN);
@@ -219,7 +219,7 @@ void st7789_disp_init() {
   for (size_t i = 0; i < ARRAY_LENGTH(st7789_init_cmds); i++) {
     lcd_init_cmd_t cmd = st7789_init_cmds[i];
     if (COMMAND_DELAY == cmd.cmd) {
-      task_delay_ms(cmd.data_length);
+      vTaskDelay(pdMS_TO_TICKS(cmd.data_length));
     } else {
       st7789_send_cmd_byte(cmd.cmd);
       if (0 < cmd.data_length) {
